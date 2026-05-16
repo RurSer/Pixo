@@ -1,0 +1,13 @@
+OLD=$(git branch --show-current)
+
+git checkout --orphan latest
+
+git add .
+
+git commit -m "init"
+
+git branch -D $OLD
+
+git branch -m $OLD
+
+git push -f origin $OLD
