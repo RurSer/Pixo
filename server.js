@@ -1,71 +1,72 @@
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
+const yaml = require("js-yaml");
 
 const app = express();
 
 const PORT = 3000;
 
-const rootDir = path.join(__dirname, "images");
+const YAML_FILE = path.join(
+  __dirname,
+  "index.yaml",
+);
 
-const IMAGE_EXT = [".jpg", ".jpeg", ".png", ".webp", ".avif"];
+function loadYamlImages() {
 
-app.use("/images", express.static(rootDir));
-
-function getGroups() {
-  const groups = [];
-
-  const subDirs = fs
-    .readdirSync(rootDir)
-    .filter((dir) => {
-      return fs.statSync(path.join(rootDir, dir)).isDirectory();
-    })
-    .sort((a, b) =>
-      a.localeCompare(b, undefined, {
-        numeric: true,
-      }),
-    );
-
-  for (const subDir of subDirs) {
-    const folderPath = path.join(rootDir, subDir);
-
-    const files = fs.readdirSync(folderPath).filter((file) => {
-      const fullPath = path.join(folderPath, file);
-
-      return (
-        fs.statSync(fullPath).isFile() &&
-        IMAGE_EXT.includes(path.extname(file).toLowerCase())
-      );
-    });
-
-    const images = files.map((file) => {
-      const parsed = path.parse(file);
-
-      return {
-        id: parsed.name,
-        original: `/images/${subDir}/${file}`,
-        w400: `/images/${subDir}/400/${parsed.name}.webp`,
-        w800: `/images/${subDir}/800/${parsed.name}.webp`,
-      };
-    });
-
-    groups.push({
-      name: subDir,
-      images,
-    });
+  if (!fs.existsSync(YAML_FILE)) {
+    return [];
   }
 
-  return groups;
+  try {
+
+    const raw = fs.readFileSync(
+      YAML_FILE,
+      "utf8",
+    );
+
+    const data = yaml.load(raw);
+
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    return data
+      .filter(Boolean)
+      .map((url, index) => {
+
+        const cleanUrl = String(url).trim();
+
+        return {
+          id: index + 1,
+          url: cleanUrl,
+          name: path.basename(
+            cleanUrl.split("?")[0],
+          ),
+        };
+      });
+
+  } catch (err) {
+
+    console.error(err);
+
+    return [];
+  }
 }
 
 app.get("/api/images", (req, res) => {
-  res.json(getGroups());
+
+  const images = loadYamlImages();
+
+  res.json(images);
 });
 
 app.get("/", (req, res) => {
+
   res.send(`
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
 
 <meta charset="UTF-8">
@@ -73,9 +74,9 @@ app.get("/", (req, res) => {
 <meta
   name="viewport"
   content="width=device-width, initial-scale=1.0"
->
+/>
 
-<title>图片预览</title>
+<title>YAML 图片预览</title>
 
 <script src="https://unpkg.com/imagesloaded@5/imagesloaded.pkgd.min.js"></script>
 
@@ -83,105 +84,247 @@ app.get("/", (req, res) => {
 
 <style>
 
-* {
-  box-sizing: border-box;
+*{
+  box-sizing:border-box;
 }
 
-body {
-  margin: 0;
-  background: #111;
-  color: #fff;
-  font-family: sans-serif;
+body{
+  margin:0;
+  background:#0f1115;
+  color:#fff;
+  font-family:
+    Inter,
+    "PingFang SC",
+    sans-serif;
 }
 
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 999;
-  display: flex;
-  gap: 10px;
-  padding: 12px;
-  background: rgba(0,0,0,.85);
-  backdrop-filter: blur(10px);
+.header{
+
+  position:sticky;
+  top:0;
+  z-index:999;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:14px 18px;
+
+  background:rgba(15,17,21,.85);
+
+  backdrop-filter:blur(16px);
+
+  border-bottom:1px solid #222;
 }
 
-select {
-  background: #222;
-  color: #fff;
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 8px 12px;
+.title{
+  font-size:18px;
+  font-weight:700;
 }
 
-.grid {
-  padding: 12px;
+.count{
+  color:#999;
+  font-size:14px;
+}
+
+.grid{
+  padding:14px;
 }
 
 .grid-sizer,
-.item {
-  width: calc(20% - 10px);
+.item{
+  width:calc(20% - 10px);
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 1600px){
+
   .grid-sizer,
-  .item {
-    width: calc(25% - 9px);
+  .item{
+    width:calc(25% - 9px);
   }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1200px){
+
   .grid-sizer,
-  .item {
-    width: calc(33.333% - 8px);
+  .item{
+    width:calc(33.333% - 8px);
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 800px){
+
   .grid-sizer,
-  .item {
-    width: calc(50% - 6px);
+  .item{
+    width:calc(50% - 6px);
   }
 }
 
-.item {
-  margin-bottom: 12px;
-  background: #1a1a1a;
-  border-radius: 12px;
-  overflow: hidden;
+@media (max-width: 500px){
+
+  .grid-sizer,
+  .item{
+    width:100%;
+  }
 }
 
-.item img {
-  width: 100%;
-  display: block;
-  cursor: pointer;
+.item{
+
+  overflow:hidden;
+
+  border-radius:16px;
+
+  background:#181c24;
+
+  border:1px solid #252b36;
+
+  margin-bottom:12px;
+
+  transition:.2s;
 }
 
-.info {
-  padding: 10px;
+.item:hover{
+  transform:translateY(-3px);
 }
 
-.id {
-  font-size: 13px;
-  word-break: break-all;
+.thumb{
+
+  width:100%;
+
+  display:block;
+
+  background:#222;
+
+  cursor:pointer;
 }
 
-.viewer {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,.95);
-  z-index: 9999;
+.info{
+  padding:12px;
 }
 
-.viewer.show {
-  display: flex;
+.name{
+
+  font-size:13px;
+
+  line-height:1.5;
+
+  word-break:break-all;
+
+  color:#d1d5db;
 }
 
-.viewer img {
-  max-width: 95%;
-  max-height: 95%;
+.url{
+
+  margin-top:8px;
+
+  font-size:12px;
+
+  color:#6b7280;
+
+  word-break:break-all;
+}
+
+.actions{
+
+  display:flex;
+
+  gap:8px;
+
+  margin-top:10px;
+}
+
+.btn{
+
+  border:none;
+
+  padding:8px 10px;
+
+  border-radius:10px;
+
+  background:#2563eb;
+
+  color:#fff;
+
+  cursor:pointer;
+
+  font-size:12px;
+}
+
+.btn:hover{
+  opacity:.9;
+}
+
+.viewer{
+
+  position:fixed;
+
+  inset:0;
+
+  z-index:99999;
+
+  display:none;
+
+  align-items:center;
+
+  justify-content:center;
+
+  background:rgba(0,0,0,.96);
+}
+
+.viewer.show{
+  display:flex;
+}
+
+.viewer img{
+
+  max-width:95%;
+
+  max-height:95%;
+
+  border-radius:10px;
+}
+
+.close{
+
+  position:absolute;
+
+  top:20px;
+
+  right:20px;
+
+  width:44px;
+
+  height:44px;
+
+  border:none;
+
+  border-radius:50%;
+
+  background:#fff;
+
+  color:#000;
+
+  font-size:22px;
+
+  cursor:pointer;
+}
+
+.empty{
+
+  padding:60px 20px;
+
+  text-align:center;
+
+  color:#777;
+}
+
+.loading{
+
+  padding:40px;
+
+  text-align:center;
+
+  color:#888;
 }
 
 </style>
@@ -192,156 +335,272 @@ select {
 
 <div class="header">
 
-  <select id="groupSelect">
-    <option value="all">全部</option>
-  </select>
+  <div class="title">
+    YAML 图片预览
+  </div>
 
-  <select id="versionSelect">
-    <option value="original">原图</option>
-    <option value="w800">800</option>
-    <option value="w400">400</option>
-  </select>
+  <div
+    class="count"
+    id="count"
+  >
+    加载中...
+  </div>
 
 </div>
 
-<div class="grid" id="grid"></div>
+<div
+  class="grid"
+  id="grid"
+>
+  <div class="loading">
+    Loading...
+  </div>
+</div>
 
-<div class="viewer" id="viewer">
+<div
+  class="viewer"
+  id="viewer"
+>
+
+  <button
+    class="close"
+    id="closeBtn"
+  >
+    ×
+  </button>
+
   <img id="viewerImg">
+
 </div>
 
 <script>
 
-const grid = document.getElementById('grid');
+const grid =
+  document.getElementById("grid");
 
-const groupSelect = document.getElementById('groupSelect');
+const countEl =
+  document.getElementById("count");
 
-const versionSelect = document.getElementById('versionSelect');
+const viewer =
+  document.getElementById("viewer");
 
-const viewer = document.getElementById('viewer');
+const viewerImg =
+  document.getElementById("viewerImg");
 
-const viewerImg = document.getElementById('viewerImg');
+const closeBtn =
+  document.getElementById("closeBtn");
 
-let groups = [];
+let masonry = null;
 
-let msnry = null;
+async function loadImages(){
 
-async function load() {
+  try{
 
-  const res = await fetch('/api/images');
+    const res =
+      await fetch("/api/images");
 
-  groups = await res.json();
+    const images =
+      await res.json();
 
-  for (const g of groups) {
+    render(images);
 
-    const option = document.createElement('option');
+  }catch(err){
 
-    option.value = g.name;
+    console.error(err);
 
-    option.innerText = g.name;
-
-    groupSelect.appendChild(option);
+    grid.innerHTML = \`
+      <div class="empty">
+        加载失败
+      </div>
+    \`;
   }
-
-  render();
 }
 
-function render() {
+function render(images){
 
-  const group = groupSelect.value;
+  countEl.innerText =
+    \`共 \${images.length} 张图片\`;
 
-  const version = versionSelect.value;
+  if(images.length === 0){
 
-  let list = [];
+    grid.innerHTML = \`
+      <div class="empty">
+        index.yaml 没有图片
+      </div>
+    \`;
 
-  if (group === 'all') {
-
-    groups.forEach(g => {
-      list.push(...g.images);
-    });
-
-  } else {
-
-    const target = groups.find(g => g.name === group);
-
-    if (target) {
-      list = target.images;
-    }
+    return;
   }
 
   grid.innerHTML =
+
     '<div class="grid-sizer"></div>' +
 
-    list.map(item => {
+    images.map(item => {
 
       return \`
         <div class="item">
 
           <img
+            class="thumb"
             loading="lazy"
-            src="\${item[version]}"
-            data-view="\${item[version]}"
+            src="\${item.url}"
+            data-url="\${item.url}"
           >
 
           <div class="info">
-            <div class="id">\${item.id}</div>
+
+            <div class="name">
+              \${item.name}
+            </div>
+
+            <div class="url">
+              \${item.url}
+            </div>
+
+            <div class="actions">
+
+              <button
+                class="btn copy-btn"
+                data-copy="\${item.url}"
+              >
+                复制链接
+              </button>
+
+              <button
+                class="btn open-btn"
+                data-open="\${item.url}"
+              >
+                新窗口打开
+              </button>
+
+            </div>
+
           </div>
 
         </div>
       \`;
 
-    }).join('');
+    }).join("");
 
-  bindViewer();
+  bindEvents();
 
-  if (msnry) {
-    msnry.destroy();
+  if(masonry){
+    masonry.destroy();
   }
 
   imagesLoaded(grid, () => {
 
-    msnry = new Masonry(grid, {
-      itemSelector: '.item',
-      columnWidth: '.grid-sizer',
+    masonry = new Masonry(grid, {
+
+      itemSelector: ".item",
+
+      columnWidth: ".grid-sizer",
+
       percentPosition: true,
+
       gutter: 12
     });
 
   });
 }
 
-function bindViewer() {
+function bindEvents(){
 
-  document.querySelectorAll('.item img').forEach(img => {
+  document
+    .querySelectorAll(".thumb")
+    .forEach(img => {
 
-    img.onclick = () => {
+      img.onclick = () => {
 
-      viewer.classList.add('show');
+        viewer.classList.add("show");
 
-      viewerImg.src = img.dataset.view;
-    };
+        viewerImg.src =
+          img.dataset.url;
+      };
+    });
 
-  });
+  document
+    .querySelectorAll(".copy-btn")
+    .forEach(btn => {
+
+      btn.onclick = async () => {
+
+        const text =
+          btn.dataset.copy;
+
+        await navigator
+          .clipboard
+          .writeText(text);
+
+        btn.innerText = "已复制";
+
+        setTimeout(() => {
+
+          btn.innerText =
+            "复制链接";
+
+        }, 1000);
+      };
+    });
+
+  document
+    .querySelectorAll(".open-btn")
+    .forEach(btn => {
+
+      btn.onclick = () => {
+
+        window.open(
+          btn.dataset.open,
+          "_blank",
+        );
+      };
+    });
 }
 
-viewer.onclick = () => {
+viewer.onclick = (e) => {
 
-  viewer.classList.remove('show');
+  if(
+    e.target === viewer ||
+    e.target === closeBtn
+  ){
+
+    viewer.classList.remove(
+      "show",
+    );
+
+    viewerImg.src = "";
+  }
 };
 
-groupSelect.onchange = render;
+document.addEventListener(
+  "keydown",
+  (e) => {
 
-versionSelect.onchange = render;
+    if(e.key === "Escape"){
 
-load();
+      viewer.classList.remove(
+        "show",
+      );
+
+      viewerImg.src = "";
+    }
+  }
+);
+
+loadImages();
 
 </script>
 
 </body>
+
 </html>
   `);
 });
 
 app.listen(PORT, () => {
-  console.log(`http://localhost:${PORT}`);
+
+  console.log(
+    `http://localhost:${PORT}`
+  );
 });

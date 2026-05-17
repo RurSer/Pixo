@@ -1,12 +1,12 @@
-
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
+const name = 'index.yaml'
 const IMAGE_DIR = path.join(__dirname, 'images');
 
 const CDN_PREFIX =
-  'https://jsd.onmicrosoft.cn/gh/RurSer/Pixo@main/';
+  'https://cdn.jsdmirror.com/gh/RurSer/Pixo@main/';
 
 const EXTENSIONS = new Set([
   '.jpg',
@@ -82,7 +82,7 @@ async function scan(dir) {
     results.map(url => `- ${url}`).join('\n');
 
   fs.writeFileSync(
-    'banner-images.yml',
+    name,
     yamlContent
   );
 
@@ -90,5 +90,5 @@ async function scan(dir) {
   console.log(`共找到 ${results.length} 张 16:9 图片`);
   console.log('========================');
 
-  console.log('\n已生成: banner-images.yml');
+  console.log(`\n已生成: ${name}`);
 })();

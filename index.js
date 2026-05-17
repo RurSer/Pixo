@@ -22,7 +22,7 @@ const CONFIG = {
     effort: 4,
   },
 
-  cdnPrefix: "https://jsd.onmicrosoft.cn/gh/RurSer/Pixo@main/images/",
+  cdnPrefix: "https://cdn.jsdmirror.com/gh/RurSer/Pixo@main/images/",
 };
 
 const HEADERS = {
